@@ -1,4 +1,4 @@
-import { COLLAPSE_W, HEADER_H, PAD_X, ROW_H, destinoEnCamino, textoFila, type Arbol, type Arista, type ColorKey, type Fila, type Modelo } from "./model";
+import { COLLAPSE_W, HEADER_H, PAD_X, ROW_H, destinoEnCamino, filasAuto, textoFila, type Arbol, type Arista, type ColorKey, type Fila, type Modelo } from "./model";
 import { DEFAULT_CONFIG } from "../config";
 import { computeLayout, lowerBoundEnd, upperBoundStart, type Direction, type Layout } from "./layout";
 import { NODE_FONT_FAMILY, themes, type CanvasTheme, type ThemeMode } from "./theme";
@@ -29,8 +29,6 @@ export interface Stage {
 
 export type Modo = "flujo" | "estructura";
 
-const FLUJO_AUTO = new Set(["llamada", "crea", "encola", "ruta"]);
-const ESTRUCTURA_AUTO = new Set(["submodulo", "clase", "funcion", "main", "nivel", "app"]);
 const MAX_AUTO = 700;
 /** Filas "nombre: tipo" (las demás se escriben "clave valor"). */
 const CON_DOS_PUNTOS = new Set(["param", "atributo", "enum"]);
@@ -399,7 +397,6 @@ export class GraphView {
     const esc = this.escena;
     if (!esc || this.stageRoot < 0) return;
     const { arbol, modelo } = esc;
-    const auto = this.modo === "flujo" ? FLUJO_AUTO : ESTRUCTURA_AUTO;
     const maxRel = this.levels > 0 ? this.levels - 1 : 12;
     const base = arbol.depth[this.stageRoot];
     let cola = [this.stageRoot];
@@ -408,6 +405,7 @@ export class GraphView {
       const sig: number[] = [];
       for (const n of cola) {
         if (arbol.depth[n] - base >= maxRel || arbol.ciclo[n]) continue;
+        const auto = filasAuto(this.modo, modelo, arbol, n);
         for (const f of modelo.filas(arbol.def[n])) {
           if (!f.destinos.length || !auto.has(f.kind)) continue;
           if (f.destinos.every(d => arbol.esAncestroDef(n, d))) continue;
@@ -558,6 +556,40 @@ export class GraphView {
     }
     this.anim = { from: [this.camX, this.camY, this.zoom], to: [x, y, z], t0: performance.now(), dur: 320 };
     this.requestDraw();
+  }
+
+  /**
+   * Encuadre al empezar: todo si cabe con un zoom legible; si no, la raíz pegada al borde
+   * (izquierdo o superior) y las primeras columnas del flujo a la vista.
+   */
+  encuadrarInicio(n: number) {
+    const L = this.layout;
+    if (!L || !this.isVisible(n)) return;
+    const pad = 40;
+    const W = this.cssW;
+    const H = this.cssH;
+    const right = this.dir === "RIGHT";
+    const w = right ? L.depthExtent : L.stackExtent;
+    const h = right ? L.stackExtent : L.depthExtent;
+    const fitZ = Math.min((W - 2 * pad) / Math.max(1, w), (H - 2 * pad) / Math.max(1, h));
+    if (fitZ >= 0.55) {
+      this.lookAt(w / 2, h / 2, Math.min(1, fitZ), false);
+      return;
+    }
+    // zoom para ver hasta tres columnas (niveles) a lo largo del flujo
+    const hasta = L.maxDepth >= 3 ? L.colPos[3] : L.depthExtent;
+    const z = this.clampZoom(Math.max(0.55, Math.min(1, ((right ? W : H) - 2 * pad) / Math.max(1, hasta))));
+    const x = this.nodeX(n);
+    const y = this.nodeY(n);
+    if (right) {
+      const cx = x - pad / z + W / 2 / z;
+      const cy = h * z <= H - 2 * pad ? h / 2 : Math.max(H / 2 / z - pad / z, y + Math.min(L.h[n], 400) / 2);
+      this.lookAt(cx, cy, z, false);
+    } else {
+      const cy = y - pad / z + H / 2 / z;
+      const cx = w * z <= W - 2 * pad ? w / 2 : Math.max(W / 2 / z - pad / z, x + L.w[n] / 2);
+      this.lookAt(cx, cy, z, false);
+    }
   }
 
   fitView(animate = true) {

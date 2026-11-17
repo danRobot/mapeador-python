@@ -1,8 +1,8 @@
 # Mapeador Python · flujo interactivo
 
-Analiza un proyecto Python y lo dibuja como un **PlantUML interactivo**: buscas solo la
-carpeta principal, el programa encuentra el **main** y desde ahí abres el flujo de negocio
-llamada por llamada. Cada función, método y clase es una caja con sus **parámetros y su
+Analiza un proyecto Python y lo dibuja como un **PlantUML interactivo**: abres la carpeta
+principal, **eliges el archivo** (o la función) desde el que quieres empezar y desde ahí
+abres el flujo de negocio llamada por llamada. Cada función, método y clase es una caja con sus **parámetros y su
 tipo de dato**, y las hojas son los **servicios externos** (HTTP, SOAP, BD, archivos,
 colas, correo...) con su destino evaluado.
 
@@ -79,8 +79,18 @@ Por defecto escucha solo en `127.0.0.1`. Para que entren otros equipos: `--host 
    El navegador lee solo los `.py`, `pyproject.toml` y `setup.cfg` (se salta `venv`,
    `node_modules`, `.git`, `build`, `migrations`...) y el servidor los analiza en memoria:
    no se guardan ni se ejecutan.
-2. Se abre el flujo desde la entrada con más puntaje. En **Entrada** están las demás
-   (rutas web, tareas, comandos...). **Estructura** muestra paquetes → módulos → clases → métodos.
+2. **Elige desde qué archivo empezar** en la lista de la izquierda (o escribe su nombre:
+   `Ctrl+P`). Al desplegar un archivo (`▸`) puedes empezar desde una función o clase concreta,
+   y la primera fila, *todo el proyecto*, empieza por la estructura completa. Nada arranca
+   solo: los archivos con `main`, apps web, scripts, comandos o tareas aparecen como
+   **Sugeridos** (con una etiqueta `main`, `web`, `script`...), pero tú decides.
+   Desde un archivo se abre lo que se ejecuta (el bloque `if __name__ == "__main__"`, la app
+   web; si no, sus funciones y clases) y se siguen las llamadas hacia el resto del proyecto.
+   El botón **Inicio** de la barra muestra desde dónde estás mirando y abre o cierra la lista;
+   en el panel de detalle, **Usar como inicio** vuelve a empezar desde ese nodo. Se recuerda
+   el último inicio de cada proyecto, y en la URL va `?inicio=ruta/archivo.py` (o
+   `ruta/archivo.py:funcion`) para compartir el enlace.
+   **Flujo** sigue las llamadas; **Estructura** muestra paquetes → módulos → clases → métodos.
 3. Abre filas con `+`. Al pasar el límite de niveles, la flecha `→` abre una **etapa**
    nueva (breadcrumbs arriba a la izquierda, `Retroceso` para volver).
 
@@ -129,14 +139,15 @@ triángulo hueco = herencia · roja = lanza excepción.
 - **servicios externos alcanzables** desde ahí (todo lo que toca hacia abajo);
 - el **código** con la línea resaltada.
 
-Los nombres en verde son enlaces: llevan a esa definición abriendo el camino desde la
-entrada (o, si no se llega, como etapa aparte).
+Los nombres en verde son enlaces: llevan a esa definición abriendo el camino desde el
+inicio (o, si no se llega, como etapa aparte).
 
 ### Buscar
 
 `Ctrl+F`: busca funciones, clases y módulos por nombre. Al elegir uno se busca el camino
-más corto desde la etapa actual (o desde la entrada) y se abren solo esas filas: es la
-forma rápida de responder *«¿cómo llega el main a `guardar`?»*. Las filas visibles que
+más corto desde la etapa actual (o desde el inicio) y se abren solo esas filas: es la
+forma rápida de responder *«¿cómo llega este archivo a `guardar`?»*. (Si aún no hay inicio,
+lo que eliges pasa a serlo.) `Ctrl+P` busca en la lista de archivos para cambiar el inicio. Las filas visibles que
 contienen el texto se resaltan.
 
 ### Exportar
@@ -162,9 +173,12 @@ En ⚙ se eligen qué filas mostrar (parámetros, no resueltas, librerías, exce
 callbacks, privados), los niveles por etapa y si se analizan las pruebas.
 Temas: oscuro, claro y **PlantUML** clásico.
 
-## 3. Cómo encuentra el main
+## 3. Sugerencias de inicio
 
-| Entrada | Dónde | Puntaje |
+El inicio lo eliges tú. Lo que sigue solo decide qué archivos se marcan como **Sugeridos**
+(y en qué orden):
+
+| Sugerencia | Dónde | Puntaje |
 | --- | --- | --- |
 | `if __name__ == "__main__":` | cualquier módulo (más si está en la raíz o se llama `main.py`, `app.py`, `manage.py`...) | 70+ |
 | script declarado | `[project.scripts]`, `[tool.poetry.scripts]`, `console_scripts` de `setup.cfg` / `setup.py` | 95 |
@@ -230,6 +244,8 @@ Si tu equipo tiene su propio cliente HTTP, de BD o del bus de servicios, agréga
 ```bash
 mapeador-py analizar ~/repos/pagos --salida pagos.mapa.json      # o: python -m mapeador_py analizar ...
 mapeador-py ~/repos/pagos                                         # igual (escribe pagos.mapa.json)
+mapeador-py analizar ~/repos/pagos --inicio pagos/lotes.py        # árbol del flujo desde ese archivo
+mapeador-py analizar ~/repos/pagos --inicio pagos/lotes.py:ProcesadorLotes.procesar
 ```
 
 | Parámetro | Descripción |
@@ -239,10 +255,12 @@ mapeador-py ~/repos/pagos                                         # igual (escri
 | `--incluir-pruebas` | analizar también `tests/` y `test_*.py` |
 | `--incluir-fuentes` | guardar el código en el JSON (para verlo al abrir el JSON en la interfaz) |
 | `--rondas N` | rondas de inferencia de tipos |
+| `--inicio RUTA[:funcion]` | archivo (o función, `Clase.metodo`, carpeta de paquete, nombre completo) desde el que se empieza: se imprime su flujo y la interfaz abre el JSON desde ahí. Si no existe, sugiere los parecidos |
+| `--lineas N` | líneas del árbol en consola (defecto 80) |
 | `-q` / `-v` | sin resumen / registro detallado |
 
-En consola se imprimen las entradas encontradas, el árbol desde la principal y los
-servicios externos. Desde otro script: `from mapeador_py.analizador import analizar_carpeta`.
+En consola se imprimen las sugerencias de inicio, el árbol del flujo desde `--inicio` (si se
+indicó) y los servicios externos. Desde otro script: `from mapeador_py.analizador import analizar_carpeta`.
 
 `mapeador-py servir`: `--host`, `--puerto`, `--proyectos`, `--config`, `--abrir`
 (también por variables `MAPEADOR_PY_HOST`, `_PUERTO`, `_PROYECTOS`, `_CONFIG`, `_MAX_MB`).
@@ -251,7 +269,8 @@ servicios externos. Desde otro script: `from mapeador_py.analizador import anali
 
 ```text
 proyecto     nombre, totales (archivos, líneas, clases, funciones, % de llamadas resueltas), tiempos
-entradas[]   def, tipo, etiqueta, puntaje, evidencia, grupo        (la primera es "el main")
+entradas[]   def, tipo, etiqueta, puntaje, evidencia, grupo        (sugerencias de inicio)
+inicio       id de la definición elegida con --inicio (si se usó)
 defs[]       id, tipo, nombre, qual, archivo, linea, fin, marcas, decoradores, doc,
              firma, params[{nombre, tipo, refs, origen, defecto, valor, valor_construccion}],
              retorno{tipo, refs, origen}, bases, atributos, subclases, hijos,
@@ -273,7 +292,7 @@ reemplazarla. Lo más útil:
 - `[[terminales_extra]]`: el cliente HTTP / SQL / ESB del framework de la empresa;
 - `[[tipos_externos_extra]]`: qué devuelve una función de una librería interna
   (`banco_fw.bd.conectar` → `Conexion`), para seguir cadenas;
-- `entradas.archivos_principales_extra` / `funciones_principales_extra`: cómo se llama el main en tu equipo;
+- `entradas.archivos_principales_extra` / `funciones_principales_extra`: qué archivos sugerir como inicio en tu equipo;
 - `general.directorios_excluidos_extra`, `general.incluir_pruebas`.
 
 ## 8. Límites conocidos
@@ -304,7 +323,7 @@ mapeador_py/          analizador y servidor (solo biblioteca estándar)
   inferencia.py       tipos de expresiones, entornos, atributos, retornos, MRO
   llamadas.py         resolución de llamadas, polimorfismo, inferencia por rondas
   terminales.py       reglas de servicios externos y evaluación de destinos
-  entradas.py         búsqueda del main y de las demás entradas (apps web, tareas, CLI...)
+  entradas.py         sugerencias de inicio (main, apps web, scripts, tareas, CLI...)
   documento.py        JSON y resumen de consola
   servidor.py, cli.py
   config_default.toml configuración por defecto
@@ -312,7 +331,7 @@ mapeador_py/          analizador y servidor (solo biblioteca estándar)
 web/                  fuentes de la interfaz (TypeScript + Vite)
   src/engine/         motor Canvas de jsoncrack-lite adaptado: model, layout, view, minimap,
                       busqueda (caminos), plantuml (exportación), theme
-  src/main.ts, panel.ts, carga.ts
+  src/main.ts, archivos.ts (elegir el inicio), panel.ts, carga.ts
 ejemplo/banco-pagos/  proyecto de ejemplo (lote de pagos, API FastAPI, tarea Celery, SOAP, BD, correo)
 pruebas/              pruebas del analizador, del servidor y de la línea de comandos
 config/               config.ejemplo.toml

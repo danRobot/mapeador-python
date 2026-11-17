@@ -1,8 +1,10 @@
 """
-Búsqueda del punto de entrada ("el main") y de otras entradas del proyecto.
+Sugerencias de inicio: archivos con main, apps web, scripts, comandos, tareas...
 
-La interfaz solo recibe la carpeta principal; aquí se decide por dónde empieza el flujo.
-Cada candidato lleva un puntaje y la evidencia que lo respalda:
+El usuario elige en la interfaz (o con ``--inicio``) desde qué archivo empieza el mapa;
+esto solo decide qué archivos se marcan como sugeridos y en qué orden. También crea las
+definiciones "app" (aplicaciones web con sus rutas). Cada candidato lleva un puntaje y la
+evidencia que lo respalda:
 
     declarado   [project.scripts] / [tool.poetry.scripts] / console_scripts (pyproject,
                 setup.cfg, setup.py)                                            95

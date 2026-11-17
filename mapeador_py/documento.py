@@ -4,7 +4,8 @@ Documento JSON que dibuja la interfaz (y que se puede guardar con la línea de c
     {
       "formato": "mapeador-py/1",
       "proyecto":  {nombre, raiz, generado, version, totales, tiempos, omitidos},
-      "entradas":  [{def, tipo, etiqueta, puntaje, evidencia, grupo}]   (la primera es "el main")
+      "entradas":  [{def, tipo, etiqueta, puntaje, evidencia, grupo}]   (sugerencias de inicio)
+      "inicio": id   (solo si se eligió con --inicio: la interfaz empieza ahí)
       "defs": [
         {id, tipo, nombre, qual, modulo, clase, padre, archivo, linea, fin, marcas, doc, decoradores,
          firma, params: [{nombre, tipo, refs, origen, defecto, especie, doc}],
@@ -283,8 +284,10 @@ class Documento:
 
 # =================================================================== consola
 
-def imprimir_resumen(doc: dict[str, Any], salida: TextIO = sys.stdout, max_arbol: int = 60) -> None:
-    """Entradas encontradas, árbol del flujo desde el main y servicios consumidos."""
+def imprimir_resumen(doc: dict[str, Any], salida: TextIO | None = None, max_arbol: int = 60,
+                     inicio: int | None = None) -> None:
+    """Totales, sugerencias de inicio, árbol del flujo desde ``inicio`` (si se eligió) y servicios."""
+    salida = salida or sys.stdout
     p = doc["proyecto"]
     t = p.get("totales", {})
     print(f"\n=== {p['nombre']}  ({t.get('archivos', 0)} archivos, {t.get('lineas', 0)} líneas, "
@@ -292,17 +295,20 @@ def imprimir_resumen(doc: dict[str, Any], salida: TextIO = sys.stdout, max_arbol
     print(f"    llamadas resueltas: {t.get('resueltas_pct', 0)} %  {t.get('especies', {})}", file=salida)
     defs = doc["defs"]
     entradas = doc.get("entradas", [])
-    if not entradas:
-        print("  (no se encontró ningún punto de entrada)", file=salida)
+    if inicio is None:
+        if entradas:
+            print("\n  Sugerencias para empezar (detectadas automáticamente):", file=salida)
+            for e in entradas[:12]:
+                print(f"    [{e['puntaje']:>3}] {e['grupo']:<10} {e['etiqueta']}", file=salida)
+            if len(entradas) > 12:
+                print(f"    ... y {len(entradas) - 12} más", file=salida)
+        print("\n  Elige el archivo de inicio en la interfaz, o aquí con  --inicio ruta/archivo.py"
+              "  (o ruta/archivo.py:funcion).", file=salida)
     else:
-        print("\n  Entradas (la primera es la que abre la interfaz):", file=salida)
-        for e in entradas[:12]:
-            print(f"    [{e['puntaje']:>3}] {e['grupo']:<10} {e['etiqueta']}", file=salida)
-        if len(entradas) > 12:
-            print(f"    ... y {len(entradas) - 12} más", file=salida)
+        d = defs[inicio]
         lineas: list[str] = []
-        _arbol(defs, entradas[0]["def"], "    ", True, lineas, frozenset(), set(), max_arbol, None, True)
-        print("\n  Flujo desde la entrada principal:", file=salida)
+        _arbol(defs, inicio, "    ", True, lineas, frozenset(), set(), max_arbol, _etiqueta_inicio(d), True)
+        print(f"\n  Flujo desde {_etiqueta_inicio(d)}:", file=salida)
         for linea in lineas[:max_arbol]:
             print(linea, file=salida)
         if len(lineas) >= max_arbol:
@@ -315,19 +321,116 @@ def imprimir_resumen(doc: dict[str, Any], salida: TextIO = sys.stdout, max_arbol
                   file=salida)
 
 
+def buscar_inicio(defs: list[dict[str, Any]], texto: str) -> int | None:
+    """Definición desde la que se empieza a mapear.
+
+    Acepta la ruta de un archivo relativa a la carpeta del proyecto (``api/main.py``; basta el
+    final si no es ambiguo), un archivo y una función o método (``api/routes.py:predict``,
+    ``app/servicio.py:Servicio.guardar``), una carpeta de paquete (``src/data``) o un nombre
+    completo (``data.pipeline.run``).
+    """
+    t = texto.strip().replace("\\", "/")
+    while t.startswith("./"):
+        t = t[2:]
+    if not t:
+        return None
+    archivo, nombre = t, ""
+    m = re.match(r"^(.+\.pyw?):(.+)$", t)
+    if m:
+        archivo, nombre = m.group(1), m.group(2)
+    modulos = [d for d in defs if d["tipo"] in ("modulo", "paquete") and d.get("archivo")]
+    if archivo.endswith((".py", ".pyw")) or nombre:
+        exactos = [d for d in modulos if d["archivo"] == archivo]
+        candidatos = exactos or sorted((d for d in modulos if d["archivo"].endswith("/" + archivo)),
+                                       key=lambda d: len(d["archivo"]))
+        if not candidatos:
+            return None
+        mod = candidatos[0]
+        if not nombre:
+            return mod["id"]
+        dentro = [d for d in defs if d.get("archivo") == mod["archivo"]
+                  and d["tipo"] in ("funcion", "metodo", "clase", "app")]
+        for d in dentro:
+            if d["qual"] == f"{mod['qual']}.{nombre}" or d["qual"].endswith("." + nombre):
+                return d["id"]
+        unico = [d for d in dentro if d["nombre"] == nombre]
+        return unico[0]["id"] if len(unico) == 1 else None
+    carpeta = t.rstrip("/")
+    for d in modulos:
+        if d["tipo"] == "paquete" and d["archivo"] in (f"{carpeta}/__init__.py", f"{carpeta}/__init__.pyw"):
+            return d["id"]
+    for d in defs:
+        if d["qual"] == t and d["tipo"] not in ("main", "nivel"):
+            return d["id"]
+    unico = [d for d in defs if d["nombre"] == t and d["tipo"] in ("funcion", "clase", "metodo")]
+    return unico[0]["id"] if len(unico) == 1 else None
+
+
+def _etiqueta_inicio(d: dict[str, Any]) -> str:
+    if d["tipo"] in ("modulo", "paquete", "main", "nivel") and d.get("archivo"):
+        return d["archivo"]
+    if d.get("archivo"):
+        return f"{d['archivo']}:{d['qual'].rsplit('.', 2)[-2] + '.' if d['tipo'] == 'metodo' else ''}{d['nombre']}"
+    return d["qual"]
+
+
+def _con_flujo(d: dict[str, Any]) -> bool:
+    """El bloque tiene llamadas que llevan a algo (para no listar «nivel de módulo» vacíos)."""
+    return any(ll.get("especie") == "externo" or (ll.get("destinos") and ll.get("especie") in
+               ("llamada", "crea", "encola", "ruta")) for ll in d.get("llamadas", []))
+
+
+_ORDEN_MIEMBRO = {"app": 0, "main": 0, "nivel": 1, "funcion": 2, "clase": 3, "metodo": 2, "modulo": 4, "paquete": 4}
+
+
+def _miembros(defs: list[dict[str, Any]], d: dict[str, Any]) -> list[tuple[int, str]]:
+    """Contenido de un archivo, paquete o clase cuando es el inicio (o cuelga de él)."""
+    r: list[tuple[int, int, str]] = []
+    for h in d.get("hijos", []):
+        x = defs[h]
+        tipo = x["tipo"]
+        if tipo == "nivel" and not _con_flujo(x):
+            continue
+        if tipo == "metodo" and x["nombre"].startswith("_") and x["nombre"] != "__init__":
+            continue
+        if tipo == "main":
+            etiqueta = '▶ if __name__ == "__main__"'
+        elif tipo == "nivel":
+            etiqueta = "≡ código de nivel de módulo"
+        elif tipo == "app":
+            clase = (x.get("clase_app") or "app").rsplit(".", 1)[-1]
+            etiqueta = f"{clase} {x['nombre']} ({len(x.get('llamadas', []))} rutas)"
+        elif tipo == "clase":
+            etiqueta = f"class {x['nombre']}"
+        elif tipo in ("modulo", "paquete"):
+            etiqueta = x.get("archivo") or x["qual"]
+        else:
+            etiqueta = f"def {x['nombre']}{x.get('firma', '()')}"
+        r.append((_ORDEN_MIEMBRO.get(tipo, 5), h, etiqueta))
+    r.sort(key=lambda m: m[0])
+    return [(h, etiqueta) for _, h, etiqueta in r]
+
+
 def _sustituir(texto: str, valores: dict[str, str]) -> str:
     return re.sub(r"\{([A-Za-z_]\w*)\}", lambda m: valores.get(m.group(1), m.group(0)), texto)
 
 
+_NUMERO = re.compile(r"-?\d+(\.\d+)?")
+
+
 def _valor_param(p: dict[str, Any], construccion: bool) -> str | None:
+    """Valor conocido de un parámetro para completar un destino. Del texto del valor por
+    defecto solo sirven las cadenas y los números (no ``None`` ni ``Field(...)``)."""
     if construccion and p.get("valor_construccion"):
         return p["valor_construccion"]
     if p.get("valor"):
         return p["valor"]
     defecto = p.get("defecto")
-    if defecto and defecto[:1] in "'\"" and defecto[-1:] == defecto[:1]:
+    if defecto and len(defecto) >= 2 and defecto[:1] in "'\"" and defecto[-1:] == defecto[:1]:
         return defecto[1:-1]
-    return defecto
+    if defecto and _NUMERO.fullmatch(defecto):
+        return defecto
+    return None
 
 
 def destino_estatico(defs: list[dict[str, Any]], d: dict[str, Any], ext: dict[str, Any],
@@ -354,12 +457,12 @@ def destino_estatico(defs: list[dict[str, Any]], d: dict[str, Any], ext: dict[st
 
 def _arbol(defs: list[dict[str, Any]], did: int, prefijo: str, ultimo: bool, lineas: list[str], rama: frozenset,
            mostrados: set[int], maximo: int, etiqueta: str | None, es_raiz: bool = False,
-           valores: dict[str, str] | None = None) -> None:
+           valores: dict[str, str] | None = None, miembro: bool = False) -> None:
     if len(lineas) >= maximo:
         return
     d = defs[did]
     texto = etiqueta or f"{d['qual']}{d.get('firma', '')}"
-    if not es_raiz:
+    if not es_raiz and not miembro:
         destino = d["qual"] if d["tipo"] != "app" else f"app {d['nombre']}"
         texto += f"   → {destino}"
     sufijo = "  (ciclo)" if did in rama else ("  (ya mostrado)" if did in mostrados else "")
@@ -373,6 +476,9 @@ def _arbol(defs: list[dict[str, Any]], did: int, prefijo: str, ultimo: bool, lin
         return
     mostrados.add(did)
     items: list[tuple] = []
+    # un archivo, paquete o clase muestra su contenido (y desde ahí se siguen las llamadas)
+    if d["tipo"] in ("proyecto", "paquete", "modulo") or (d["tipo"] == "clase" and (es_raiz or miembro)):
+        items.extend(("miembro", h, etiqueta_m) for h, etiqueta_m in _miembros(defs, d))
     for f in d.get("llamadas", []):
         if f.get("especie") == "externo":
             items.append(("ext", f))
@@ -383,7 +489,9 @@ def _arbol(defs: list[dict[str, Any]], did: int, prefijo: str, ultimo: bool, lin
         if len(lineas) >= maximo:
             return
         fin = i == len(items) - 1
-        if it[0] == "ext":
+        if it[0] == "miembro":
+            _arbol(defs, it[1], hijo, fin, lineas, rama | {did}, mostrados, maximo, it[2], False, None, True)
+        elif it[0] == "ext":
             e = it[1].get("externo", {})
             destino = destino_estatico(defs, d, e, valores)
             lineas.append(f"{hijo}{'└─ ' if fin else '├─ '}⇢ {e.get('tipo')} {e.get('verbo') or ''} "

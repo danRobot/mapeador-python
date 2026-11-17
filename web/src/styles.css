@@ -135,6 +135,14 @@ svg {
   background: var(--surface-2);
   border-color: var(--border-strong);
 }
+.btn[hidden],
+.mini[hidden] {
+  display: none;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
@@ -265,6 +273,15 @@ svg {
   position: relative;
   overflow: hidden;
   min-height: 0;
+  display: flex;
+}
+
+/* el lienzo (canvas, migas, HUD, panel) ocupa lo que deja la lista de archivos */
+.lienzo {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .canvas-wrap {
@@ -1117,18 +1134,9 @@ code {
   color: var(--accent);
   font-weight: 600;
 }
-.entrada-sel {
-  max-width: 330px;
-}
-.entrada-sel select {
-  max-width: 250px;
-}
 .toolbar .search {
   min-width: 200px;
   flex: 0 1 340px;
-}
-.entrada-sel.off {
-  opacity: 0.45;
 }
 
 .search {
@@ -1512,7 +1520,7 @@ pre.codigo .d { color: var(--tipo); }
   width: min(600px, 100%);
 }
 @media (max-width: 1200px) {
-  .entrada-sel span,
+  .inicio-btn .inicio-pre,
   .btn#btn-puml span {
     display: none;
   }
@@ -1534,5 +1542,306 @@ pre.codigo .d { color: var(--tipo); }
   #btn-json span,
   .brand span {
     display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ lista de archivos (inicio) */
+
+.archivos {
+  position: relative;
+  flex: none;
+  width: var(--arch-w, 300px);
+  min-width: 200px;
+  max-width: 70vw;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--chrome);
+  border-right: 1px solid var(--border);
+  z-index: 8;
+}
+.archivos[hidden] {
+  display: none;
+}
+.archivos-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 2px 12px;
+}
+.archivos-titulo {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.archivos-num {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.archivos-head .icon-btn {
+  width: 26px;
+  height: 26px;
+}
+.archivos-filtro {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 8px 6px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--chrome-2);
+}
+.archivos-filtro:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.archivos-filtro input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: 12.5px var(--ui-font);
+}
+.archivos-lista {
+  flex: 1;
+  overflow: auto;
+  padding: 0 4px 16px;
+}
+.ar-fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 24px;
+  padding: 0 8px 0 calc(6px + var(--p, 0) * 14px);
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text);
+  font: 12.5px var(--ui-font);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ar-fila:hover {
+  background: var(--surface-2);
+}
+.ar-fila.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.ar-fila.contiene > .ar-txt {
+  color: var(--accent);
+}
+.ar-fila.kb {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.ar-fila.err > .ar-txt {
+  color: var(--false);
+}
+.ar-chev {
+  flex: none;
+  width: 12px;
+  color: var(--text-faint);
+  font-size: 10px;
+  text-align: center;
+}
+.ar-chev[data-toggle] {
+  cursor: pointer;
+}
+.ar-chev[data-toggle]:hover {
+  color: var(--text);
+}
+.ar-ico {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--text-faint);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ar-carpeta .ar-ico {
+  stroke: var(--tipo);
+}
+.ar-archivo .ar-ico {
+  stroke: var(--key);
+}
+.ar-proyecto .ar-ico {
+  stroke: var(--accent);
+}
+.ar-txt {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ar-dim {
+  color: var(--text-faint);
+  font-weight: 400;
+  font-size: 11.5px;
+}
+.ar-miembro .ar-txt {
+  font: 11.5px var(--mono);
+}
+.ar-miembro .letra {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  font-size: 9.5px;
+}
+.ar-num {
+  color: var(--text-faint);
+  font: 10.5px var(--mono);
+}
+.ar-ins {
+  flex: none;
+  height: 16px;
+  padding: 0 6px;
+  line-height: 16px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font: 600 10px var(--mono);
+}
+.ins-app {
+  background: color-mix(in srgb, var(--http) 18%, transparent);
+  color: var(--http);
+}
+.ins-main,
+.ins-funcion {
+  background: color-mix(in srgb, var(--true) 16%, transparent);
+  color: var(--true);
+}
+.ins-declarado,
+.ins-script,
+.ins-cli,
+.ins-serverless,
+.ins-tarea {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ar-seccion {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 8px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  font: 600 10.5px var(--ui-font);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  cursor: pointer;
+}
+.ar-seccion small {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.ar-seccion-fija {
+  cursor: default;
+}
+.ar-sug {
+  height: 26px;
+}
+.ar-vacio {
+  padding: 12px;
+  color: var(--text-faint);
+}
+.archivos-borde {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 3;
+}
+.archivos-borde:hover,
+.archivos-borde.activo {
+  background: var(--accent-soft);
+}
+body.redimensionando {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.inicio-btn {
+  max-width: 360px;
+  min-width: 0;
+}
+.inicio-btn .inicio-pre {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+.inicio-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 12px var(--mono);
+}
+.inicio-btn.on {
+  border-color: var(--accent);
+}
+.inicio-btn.vacio .inicio-nombre {
+  color: var(--accent);
+  font-family: var(--ui-font);
+  font-weight: 600;
+}
+
+.elegir-card {
+  width: min(580px, 100%);
+}
+.elegir-sug ul {
+  max-height: 280px;
+}
+.elegir-sug .file-item .size {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .archivos {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(320px, 88vw);
+    z-index: 30;
+    box-shadow: var(--shadow);
+  }
+}
+
+/* sin mapa (sin proyecto o sin inicio elegido) no hay nada que mostrar en el minimapa */
+.sin-mapa .minimap,
+.sin-mapa .leyenda {
+  display: none;
+}
+
+.segmented {
+  flex: none;
+}
+@media (max-width: 900px) {
+  /* en pantallas angostas la búsqueda pasa a una segunda línea */
+  .toolbar {
+    flex-wrap: wrap;
   }
 }

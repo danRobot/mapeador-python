@@ -648,13 +648,41 @@ export class Arbol {
   }
 }
 
+const FLUJO_AUTO = new Set<FilaKind>(["llamada", "crea", "encola", "ruta"]);
+const ESTRUCTURA_AUTO = new Set<FilaKind>(["submodulo", "clase", "funcion", "main", "nivel", "app"]);
+const METODOS_AUTO = new Set<FilaKind>(["metodo"]);
+const CONTENEDORES = new Set(["proyecto", "paquete", "modulo"]);
+
+/**
+ * Filas de un nodo que se abren solas (al empezar o con «Expandir»). En el modo Flujo un
+ * archivo o paquete abre su contenido (funciones, clases, main, app) y desde ahí se siguen
+ * las llamadas; una clase que cuelga de un archivo abre sus métodos.
+ */
+export function filasAuto(modo: "flujo" | "estructura", modelo: Modelo, arbol: Arbol, n: number): Set<FilaKind> {
+  if (modo === "estructura") return ESTRUCTURA_AUTO;
+  const tipo = modelo.def(arbol.def[n]).tipo;
+  if (CONTENEDORES.has(tipo)) return ESTRUCTURA_AUTO;
+  if (tipo === "clase") {
+    const p = arbol.padre[n];
+    if (p < 0 || CONTENEDORES.has(modelo.def(arbol.def[p]).tipo)) return METODOS_AUTO;
+  }
+  return FLUJO_AUTO;
+}
+
 /** Reemplaza "{param}" por el valor conocido en el camino. */
 export function sustituir(texto: string, valores: Record<string, string>): string {
   return texto.replace(/\{([A-Za-z_][\w]*)\}/g, (m, nombre: string) => (nombre in valores ? valores[nombre] : m));
 }
 
-const valorParam = (p: Param, construccion: boolean) =>
-  (construccion ? p.valor_construccion : undefined) ?? p.valor ?? (p.defecto && /^(['"]).*\1$/.test(p.defecto) ? p.defecto.slice(1, -1) : p.defecto);
+/** Valor conocido de un parámetro; del texto por defecto solo sirven cadenas y números (no None ni Field(...)). */
+function valorParam(p: Param, construccion: boolean): string | undefined {
+  const v = (construccion ? p.valor_construccion : undefined) ?? p.valor;
+  if (v) return v;
+  const d = p.defecto;
+  if (d && /^(['"]).*\1$/.test(d)) return d.slice(1, -1);
+  if (d && /^-?\d+(\.\d+)?$/.test(d)) return d;
+  return undefined;
+}
 
 /**
  * Destino de un servicio externo visto desde un nodo: primero los valores que llegan por el

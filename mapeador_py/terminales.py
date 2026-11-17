@@ -68,7 +68,7 @@ class Evaluador:
     def texto(self, e: ast.expr | None, ctx: int, prof: int = 0) -> str:
         if e is None:
             return ""
-        if prof > 6:
+        if prof > 12:
             return "{" + texto_expr(e, 40) + "}"
         sig = lambda x: self.texto(x, ctx, prof + 1)  # noqa: E731
         if isinstance(e, ast.Constant):
@@ -133,6 +133,14 @@ class Evaluador:
                 return sig(kw[campo]) if campo in kw else "{" + campo + "}"
 
             return re.sub(r"\{([^{}:!]*)(?:[:!][^{}]*)?\}", reemplazo, plantilla)
+        if corto in ("Field", "field", "Form", "Query", "Body", "Header", "Cookie", "File", "Param"):
+            # pydantic / dataclasses / FastAPI: el valor es el «default» (o lo que devuelve default_factory)
+            defecto = kw.get("default", args[0] if args else None)
+            fabrica = kw.get("default_factory")
+            if defecto is None and isinstance(fabrica, ast.Lambda):
+                defecto = fabrica.body
+            if defecto is not None and not (isinstance(defecto, ast.Constant) and defecto.value in (None, Ellipsis)):
+                return sig(defecto)
         if corto in ("urljoin",) and len(args) >= 2:
             return sig(args[0]).rstrip("/") + "/" + sig(args[1]).lstrip("/")
         if nombre.endswith("path.join") or corto in ("joinpath",):
@@ -305,7 +313,7 @@ class Terminales:
         if isinstance(valor, str):
             return valor
         texto = self.ev.evaluar(valor, ctx, defectos)
-        if "receptor" in espec and texto.startswith("{") and texto.endswith("}"):
+        if "receptor" in espec and texto.startswith("{") and texto.endswith("}") and texto.count("{") == 1:
             texto = texto[1:-1]
             if texto.endswith(".objects"):
                 texto = texto[: -len(".objects")]

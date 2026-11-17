@@ -514,6 +514,98 @@ class PruebasUnidades(unittest.TestCase):
         self.assertIn(("ARCHIVO", "ESCRIBIR", "${SALIDA}"), e)
 
 
+    def test_destinos_sin_none_y_con_field(self):
+        doc = proyecto({"tareas.py": """
+            from pathlib import Path
+            from pydantic import BaseModel, Field
+
+            class Config(BaseModel):
+                salida: Path = Field(default=Path("data/salida"), description="carpeta")
+
+            class Exportador:
+                def __init__(self, config: Config):
+                    self.config = config
+                    self.carpeta = Path(self.config.salida)
+
+                def exportar(self, nombre: str, destino=None, sufijo: str = ".json"):
+                    ruta = self.carpeta / f"{nombre}{sufijo}"
+                    ruta.unlink()
+                    open(destino, "w")
+        """})
+        e = externos(por_qual(doc, "Exportador.exportar"))
+        self.assertIn(("ARCHIVO", "unlink", "data/salida/{nombre}{sufijo}"), e)
+        # el valor por defecto None no es un destino
+        destinos_servicios = [s.get("destino") for s in doc["servicios"]]
+        self.assertNotIn("None", destinos_servicios)
+        self.assertIn("data/salida/{nombre}.json", destinos_servicios)
+
+
+class PruebasInicio(unittest.TestCase):
+    """El usuario elige desde qué archivo (o función) empieza el mapa."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = analizar_carpeta(EJEMPLO)
+
+    def test_buscar_inicio(self):
+        from mapeador_py.documento import buscar_inicio
+
+        defs = self.doc["defs"]
+        qual = lambda t: defs[buscar_inicio(defs, t)]["qual"]  # noqa: E731
+        self.assertEqual(defs[buscar_inicio(defs, "pagos/lotes.py")]["archivo"], "pagos/lotes.py")
+        self.assertEqual(defs[buscar_inicio(defs, "./pagos/lotes.py")]["tipo"], "modulo")
+        self.assertEqual(defs[buscar_inicio(defs, "lotes.py")]["archivo"], "pagos/lotes.py")  # basta el final
+        self.assertEqual(qual("pagos/lotes.py:ProcesadorLotes.procesar"), "pagos.lotes.ProcesadorLotes.procesar")
+        self.assertEqual(qual("pagos/servicios/pagos.py:ServicioPagos"), "pagos.servicios.pagos.ServicioPagos")
+        self.assertEqual(defs[buscar_inicio(defs, "pagos/servicios")]["tipo"], "paquete")
+        self.assertEqual(qual("pagos.cli.main"), "pagos.cli.main")
+        self.assertIsNone(buscar_inicio(defs, "no/existe.py"))
+        self.assertIsNone(buscar_inicio(defs, "pagos/lotes.py:no_existe"))
+
+    def test_resumen_sin_inicio_no_elige_solo(self):
+        import io
+
+        from mapeador_py.documento import imprimir_resumen
+
+        salida = io.StringIO()
+        imprimir_resumen(self.doc, salida)
+        texto = salida.getvalue()
+        self.assertIn("Sugerencias para empezar", texto)
+        self.assertIn("--inicio", texto)
+        self.assertNotIn("Flujo desde", texto)
+
+    def test_resumen_desde_un_archivo(self):
+        import io
+
+        from mapeador_py.documento import buscar_inicio, imprimir_resumen
+
+        salida = io.StringIO()
+        imprimir_resumen(self.doc, salida, 80, buscar_inicio(self.doc["defs"], "main.py"))
+        texto = salida.getvalue()
+        self.assertIn("Flujo desde main.py", texto)
+        self.assertIn('if __name__ == "__main__"', texto)
+        self.assertIn("ProcesadorLotes.procesar", texto)  # se siguen las llamadas desde el main
+
+    def test_cli_inicio(self):
+        import contextlib
+        import io
+
+        from mapeador_py.cli import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            salida = Path(tmp) / "mapa.json"
+            consola = io.StringIO()
+            with contextlib.redirect_stdout(consola):
+                r = main(["analizar", str(EJEMPLO), "--salida", str(salida), "--inicio", "pagos/lotes.py"])
+            self.assertEqual(r, 0)
+            doc = json.loads(salida.read_text(encoding="utf-8"))
+            self.assertEqual(doc["defs"][doc["inicio"]]["archivo"], "pagos/lotes.py")
+            self.assertIn("Flujo desde pagos/lotes.py", consola.getvalue())
+            with self.assertLogs("mapeador_py", level="ERROR") as registro:
+                self.assertEqual(main(["analizar", str(EJEMPLO), "--salida", str(salida), "-q", "--inicio", "lote.py"]), 1)
+            self.assertIn("pagos/lotes.py", "\n".join(registro.output))  # sugiere el parecido
+
+
 class PruebasConfiguracionPropia(unittest.TestCase):
 
     def test_cliente_propio_como_servicio_externo(self):

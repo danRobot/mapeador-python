@@ -10,7 +10,7 @@ archivo, o solo la configuración TOML.
 | --- | --- |
 | El framework de la empresa hace las llamadas HTTP / SQL / ESB | `[[terminales_extra]]` (con `clases`+`metodos` o `funciones`) |
 | Una función de una librería interna devuelve un objeto cuyos métodos interesan | `[[tipos_externos_extra]]` |
-| El main se llama distinto (`lanzador.py`, `ejecutar_lote()`) | `entradas.archivos_principales_extra`, `entradas.funciones_principales_extra` |
+| Que se sugieran archivos con otro nombre de main (`lanzador.py`, `ejecutar_lote()`) | `entradas.archivos_principales_extra`, `entradas.funciones_principales_extra` |
 | Un framework web propio (`MiApp()`, `@mi_app.ruta(...)`) | `entradas.clases_app_extra`, `entradas.metodos_rutas_extra` |
 | Decoradores de tareas o comandos propios | `entradas.decoradores_tareas_extra`, `entradas.decoradores_cli_extra` |
 | Carpetas que sobran | `general.directorios_excluidos_extra` |
@@ -27,7 +27,7 @@ Todo está documentado en `mapeador_py/config_default.toml`.
 | `inferencia.py` | Tipos de expresiones y nombres, entornos, atributos de instancia, retornos, MRO | `tipos_expr`, `tipos_nombre`, `tipos_anotacion`, `entorno`, `retorno`, `miembro_instancia`, `mro` |
 | `terminales.py` | Reglas de servicios externos y evaluación de destinos | `Terminales.para_llamada`, `Evaluador.evaluar` |
 | `llamadas.py` | Resolución de cada llamada, polimorfismo, Protocol, tareas, rondas de inferencia | `Resolutor.resolver_todo`, `resolver_llamada`, `_polimorfismo`, `_observar`, `_valores` |
-| `entradas.py` | Búsqueda del main y de las demás entradas; apps web y sus rutas | `DetectorEntradas.detectar`, `_apps_web`, `_incluir_routers`, `_declarados` |
+| `entradas.py` | Sugerencias de inicio (main, apps web, scripts, CLI, tareas); crea las apps web y sus rutas | `DetectorEntradas.detectar`, `_apps_web`, `_incluir_routers`, `_declarados` |
 | `documento.py` | JSON para la interfaz y resumen de consola | `Documento.construir`, `destino_estatico`, `imprimir_resumen` |
 | `analizador.py` | Fachada y ejecución en un hilo con pila grande | `analizar`, `analizar_carpeta`, `analizar_archivos`, `valores_construccion` |
 | `servidor.py` | HTTP: interfaz y API | `Manejador`, `servir` |
@@ -70,7 +70,8 @@ fuentes.desde_carpeta / desde_memoria      archivos .py (+ pyproject.toml, setup
 | `src/engine/plantuml.ts` | Exportación a PlantUML (secuencia y clases) |
 | `src/panel.ts` | Panel de detalle |
 | `src/carga.ts` | Lectura de carpetas en el navegador y llamadas a la API |
-| `src/main.ts` | Barra, entradas, modos, ajustes, búsqueda, teclado |
+| `src/archivos.ts` | Lista de archivos para elegir el inicio (árbol, filtro, sugerencias); `buscarInicio` para `?inicio=` |
+| `src/main.ts` | Barra, inicio del mapa (`iniciarDesde`, `abrirInicio`), modos, ajustes, búsqueda, teclado |
 
 `npm run dev` con el servidor Python en el puerto 8080 (Vite reenvía `/api`); `npm run build`
 compila a `mapeador_py/web`.

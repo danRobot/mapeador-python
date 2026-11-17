@@ -147,7 +147,10 @@ export interface Documento {
     omitidos?: Record<string, number>;
     servidor?: string;
   };
+  /** Sugerencias de inicio (main, apps web, scripts...): no se abren solas. */
   entradas: Entrada[];
+  /** Definición desde la que empezar, si se eligió con `mapeador-py analizar --inicio`. */
+  inicio?: number;
   defs: Def[];
   servicios: Servicio[];
   advertencias: string[];

@@ -3,6 +3,7 @@ Línea de comandos.
 
     mapeador-py servir --puerto 8080 --proyectos ./proyectos      interfaz web
     mapeador-py analizar ./mi-proyecto --salida mapa.json         JSON + resumen en consola
+    mapeador-py analizar ./mi-proyecto --inicio api/main.py       flujo desde ese archivo
     mapeador-py ./mi-proyecto                                      igual que "analizar"
 
 Ver ``mapeador-py --help``.
@@ -11,6 +12,7 @@ Ver ``mapeador-py --help``.
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import logging
 import os
@@ -21,7 +23,7 @@ from pathlib import Path
 from . import __version__
 from .analizador import analizar_carpeta
 from .configuracion import cargar_configuracion
-from .documento import imprimir_resumen
+from .documento import buscar_inicio, imprimir_resumen
 
 log = logging.getLogger("mapeador_py")
 
@@ -47,6 +49,10 @@ def crear_parser() -> argparse.ArgumentParser:
     a.add_argument("--incluir-fuentes", action="store_true",
                    help="guardar el código en el JSON (para ver el código al abrir el JSON en la interfaz)")
     a.add_argument("--rondas", type=int, metavar="N", help="rondas de inferencia de tipos (defecto 3)")
+    a.add_argument("--inicio", metavar="ARCHIVO.py[:funcion]",
+                   help="archivo (o función) desde el que se empieza a mapear: se imprime su flujo y la "
+                        "interfaz abre el JSON desde ahí. Ej.: api/main.py, src/app.py:run")
+    a.add_argument("--lineas", type=int, default=80, metavar="N", help="líneas del árbol en consola (defecto 80)")
     a.add_argument("--silencioso", "-q", action="store_true", help="sin resumen en consola")
     a.add_argument("--verbose", "-v", action="store_true", help="registro detallado")
 
@@ -99,13 +105,23 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError as error:
         log.error("%s", error)
         return 1
+    id_inicio = None
+    if args.inicio:
+        id_inicio = buscar_inicio(doc["defs"], args.inicio)
+        if id_inicio is None:
+            archivos = sorted(d["archivo"] for d in doc["defs"] if d["tipo"] in ("modulo", "paquete") and d.get("archivo"))
+            parecidos = difflib.get_close_matches(args.inicio.split(":")[0], archivos, n=6, cutoff=0.3)
+            log.error("No se encontró «%s» en el proyecto.%s", args.inicio,
+                      f" ¿Quisiste decir: {', '.join(parecidos)}?" if parecidos else "")
+            return 1
+        doc["inicio"] = id_inicio
     carpeta = Path(args.carpeta).resolve()
     salida = Path(args.salida) if args.salida else Path(f"{carpeta.name}.mapa.json")
     if salida.parent and not salida.parent.exists():
         salida.parent.mkdir(parents=True, exist_ok=True)
     salida.write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     if not args.silencioso:
-        imprimir_resumen(doc)
+        imprimir_resumen(doc, max_arbol=max(10, args.lineas), inicio=id_inicio)
     for advertencia in doc.get("advertencias", [])[:15]:
         log.warning("%s", advertencia)
     log.info("JSON escrito en %s (%.1f MB, %.1f s). Ábrelo en la interfaz con «Abrir JSON».", salida,
