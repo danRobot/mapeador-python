@@ -1,0 +1,582 @@
+# =============================================================================
+# Configuración POR DEFECTO del mapeador Python.
+#
+# No edites este archivo: copia config/config.ejemplo.toml, cambia solo lo que
+# necesites y pásalo con --config (o ponlo en config/ al usar Docker). La
+# configuración del usuario se fusiona encima de esta así:
+#   - las tablas se mezclan clave por clave;
+#   - una lista del usuario REEMPLAZA la lista por defecto;
+#   - una clave terminada en "_extra" se AGREGA a la lista del mismo nombre
+#     (ej: terminales_extra agrega reglas a terminales).
+# =============================================================================
+
+[general]
+# Carpetas que nunca se recorren (por nombre, en cualquier nivel; admite comodines).
+directorios_excluidos = [
+  ".git", ".hg", ".svn", ".idea", ".vscode", "__pycache__", ".mypy_cache", ".pytest_cache",
+  ".ruff_cache", ".tox", ".nox", ".venv", "venv", "env", "virtualenv", ".virtualenv", "site-packages",
+  "dist-packages", "node_modules", "build", "dist", ".eggs", "*.egg-info", "htmlcov", ".ipynb_checkpoints",
+  "migrations", "docs", "doc", "_build",
+]
+# Pruebas: por defecto no se analizan (ensucian el grafo y las búsquedas de "main").
+incluir_pruebas = false
+directorios_pruebas = ["tests", "test", "testing", "pruebas", "test_data"]
+archivos_pruebas = ["test_*.py", "*_test.py", "tests.py", "conftest.py"]
+# Archivos más grandes que esto se omiten (KB).
+tamano_maximo_archivo_kb = 2048
+# Protección para carpetas enormes.
+max_archivos = 20000
+
+[analisis]
+# Rondas de inferencia: en cada ronda los tipos que llegan a una función desde sus
+# llamadas (p. ej. procesar(Pedido(...))) se usan para resolver lo que hay dentro.
+rondas_inferencia = 3
+# Si el receptor de una llamada no se puede tipar, enlazar con la única función o
+# método del proyecto con ese nombre (confianza baja).
+heuristica_nombre_unico = true
+# Agregar como destino las sobrescrituras en subclases (self.validar() en una clase
+# base llega también a Hija.validar). Confianza media.
+polimorfismo = true
+# Límites (protección contra uniones de tipos enormes).
+max_tipos_por_expresion = 6
+max_destinos_por_llamada = 12
+# Nombres de métodos de str/list/dict/archivos/logging. Si el receptor no se pudo
+# tipar y ningún método del proyecto se llama así, la llamada se marca como de
+# librería (la interfaz las oculta por defecto) en vez de "no resuelta".
+metodos_comunes = [
+  "append", "extend", "insert", "pop", "popleft", "appendleft", "remove", "clear", "copy", "count", "index",
+  "sort", "reverse", "get", "items", "keys", "values", "update", "setdefault", "add", "discard", "union",
+  "intersection", "difference", "issubset", "split", "rsplit", "splitlines", "join", "strip", "lstrip",
+  "rstrip", "replace", "format", "format_map", "lower", "upper", "title", "capitalize", "casefold",
+  "startswith", "endswith", "find", "rfind", "zfill", "ljust", "rjust", "center", "partition", "rpartition",
+  "encode", "decode", "isdigit", "isalpha", "isalnum", "isspace", "isupper", "islower", "read", "write",
+  "readline", "readlines", "writelines", "close", "flush", "seek", "tell", "isoformat", "strftime",
+  "strptime", "timestamp", "total_seconds", "date", "time", "now", "today", "utcnow", "fromisoformat",
+  "debug", "info", "warning", "warn", "error", "exception", "critical", "log", "group", "groups",
+  "groupdict", "match", "search", "fullmatch", "sub", "findall", "finditer", "json", "raise_for_status",
+  "hexdigest", "digest", "quantize", "to_dict", "dict", "model_dump", "model_dump_json", "dumps", "loads",
+  "dump", "load", "exists", "is_file", "is_dir", "resolve", "with_suffix", "with_name", "relative_to",
+  "iterdir", "glob", "rglob", "mkdir", "touch", "submit", "result", "set", "wait", "is_set", "acquire",
+  "release", "put", "put_nowait", "get_nowait", "task_done", "start", "cancel", "done", "sleep",
+]
+# Funciones integradas que no aportan al flujo (se marcan como librería).
+integradas_ignoradas = [
+  "print", "len", "isinstance", "issubclass", "hasattr", "getattr", "setattr", "delattr", "range",
+  "enumerate", "zip", "map", "filter", "sorted", "reversed", "min", "max", "sum", "any", "all", "abs",
+  "round", "int", "float", "str", "bool", "bytes", "bytearray", "list", "dict", "set", "frozenset",
+  "tuple", "type", "id", "hash", "repr", "format", "iter", "next", "super", "object", "vars", "dir",
+  "callable", "chr", "ord", "hex", "oct", "bin", "divmod", "pow", "slice", "property", "staticmethod",
+  "classmethod", "locals", "globals", "memoryview", "complex", "ascii", "aiter", "anext", "breakpoint",
+]
+
+[entradas]
+# Archivos que suelen ser el punto de entrada (suman puntaje).
+archivos_principales = [
+  "main.py", "__main__.py", "app.py", "run.py", "manage.py", "cli.py", "server.py", "start.py",
+  "wsgi.py", "asgi.py", "application.py", "principal.py", "inicio.py", "bot.py", "worker.py",
+]
+# Funciones que, por nombre, son candidatas a punto de entrada.
+funciones_principales = ["main", "principal", "run", "cli", "start", "iniciar", "ejecutar"]
+# Decoradores de rutas web: @app.get("/x"), @router.post(...), @app.route("/x", methods=[...]).
+metodos_rutas = ["get", "post", "put", "delete", "patch", "head", "options", "trace", "route",
+                 "api_route", "websocket", "api_view", "view"]
+# Tipos (de librerías) que son aplicaciones web o routers.
+clases_app = [
+  "fastapi.FastAPI", "fastapi.APIRouter", "fastapi.routing.APIRouter", "flask.Flask", "flask.Blueprint",
+  "quart.Quart", "quart.Blueprint", "sanic.Sanic", "sanic.Blueprint", "starlette.applications.Starlette",
+  "starlette.routing.Router", "aiohttp.web.Application", "aiohttp.web.RouteTableDef", "litestar.Litestar",
+  "litestar.Router", "falcon.App", "falcon.API", "bottle.Bottle", "chalice.Chalice", "connexion.App",
+  "connexion.FlaskApp", "connexion.AsyncApp",
+]
+# Decoradores de tareas asíncronas / colas (celery, dramatiq, rq, huey).
+decoradores_tareas = ["task", "shared_task", "periodic_task", "actor", "job", "db_task", "db_periodic_task"]
+# Decoradores de comandos de consola (click, typer, invoke).
+decoradores_cli = ["command", "group", "callback"]
+# Funciones de AWS Lambda / Azure Functions / Google Cloud Functions.
+funciones_serverless = ["lambda_handler", "handler", "main_handler"]
+
+# -----------------------------------------------------------------------------
+# Tipos de retorno de funciones de librerías, para seguir cadenas como
+# sqlite3.connect(db).cursor().execute(sql). "funcion" admite comodines.
+# -----------------------------------------------------------------------------
+[[tipos_externos]]
+funcion = "sqlite3.connect"
+retorna = "sqlite3.Connection"
+[[tipos_externos]]
+funcion = "sqlite3.Connection.cursor"
+retorna = "sqlite3.Cursor"
+[[tipos_externos]]
+funcion = "psycopg2.connect"
+retorna = "psycopg2.extensions.connection"
+[[tipos_externos]]
+funcion = "psycopg2.extensions.connection.cursor"
+retorna = "psycopg2.extensions.cursor"
+[[tipos_externos]]
+funcion = "psycopg.connect"
+retorna = "psycopg.Connection"
+[[tipos_externos]]
+funcion = "psycopg.Connection.cursor"
+retorna = "psycopg.Cursor"
+[[tipos_externos]]
+funcion = "pymysql.connect"
+retorna = "pymysql.connections.Connection"
+[[tipos_externos]]
+funcion = "pymysql.connections.Connection.cursor"
+retorna = "pymysql.cursors.Cursor"
+[[tipos_externos]]
+funcion = "mysql.connector.connect"
+retorna = "mysql.connector.MySQLConnection"
+[[tipos_externos]]
+funcion = "mysql.connector.MySQLConnection.cursor"
+retorna = "mysql.connector.cursor.MySQLCursor"
+[[tipos_externos]]
+funcion = "cx_Oracle.connect"
+retorna = "cx_Oracle.Connection"
+[[tipos_externos]]
+funcion = "cx_Oracle.Connection.cursor"
+retorna = "cx_Oracle.Cursor"
+[[tipos_externos]]
+funcion = "oracledb.connect"
+retorna = "oracledb.Connection"
+[[tipos_externos]]
+funcion = "oracledb.Connection.cursor"
+retorna = "oracledb.Cursor"
+[[tipos_externos]]
+funcion = "pyodbc.connect"
+retorna = "pyodbc.Connection"
+[[tipos_externos]]
+funcion = "pyodbc.Connection.cursor"
+retorna = "pyodbc.Cursor"
+[[tipos_externos]]
+funcion = "ibm_db_dbi.connect"
+retorna = "ibm_db_dbi.Connection"
+[[tipos_externos]]
+funcion = "ibm_db_dbi.Connection.cursor"
+retorna = "ibm_db_dbi.Cursor"
+[[tipos_externos]]
+funcion = "sqlalchemy.create_engine"
+retorna = "sqlalchemy.engine.Engine"
+[[tipos_externos]]
+funcion = "sqlalchemy.engine.Engine.connect"
+retorna = "sqlalchemy.engine.Connection"
+[[tipos_externos]]
+funcion = "sqlalchemy.engine.Engine.begin"
+retorna = "sqlalchemy.engine.Connection"
+[[tipos_externos]]
+funcion = "sqlalchemy.orm.sessionmaker"
+retorna = "sqlalchemy.orm.sessionmaker"
+[[tipos_externos]]
+funcion = "sqlalchemy.orm.sessionmaker.__call__"
+retorna = "sqlalchemy.orm.Session"
+[[tipos_externos]]
+funcion = "sqlalchemy.orm.sessionmaker.begin"
+retorna = "sqlalchemy.orm.Session"
+[[tipos_externos]]
+funcion = "sqlalchemy.orm.Session.query"
+retorna = "sqlalchemy.orm.Query"
+[[tipos_externos]]
+funcion = "sqlalchemy.orm.Query.[a-z]*"
+retorna = "sqlalchemy.orm.Query"
+[[tipos_externos]]
+funcion = "requests.session"
+retorna = "requests.Session"
+[[tipos_externos]]
+funcion = "requests.sessions.Session"
+retorna = "requests.Session"
+[[tipos_externos]]
+funcion = "logging.getLogger"
+retorna = "logging.Logger"
+[[tipos_externos]]
+funcion = "redis.from_url"
+retorna = "redis.Redis"
+[[tipos_externos]]
+funcion = "redis.Redis.from_url"
+retorna = "redis.Redis"
+[[tipos_externos]]
+funcion = "redis.Redis.pipeline"
+retorna = "redis.client.Pipeline"
+[[tipos_externos]]
+funcion = "boto3.client"
+retorna = "boto3.Client"
+[[tipos_externos]]
+funcion = "boto3.resource"
+retorna = "boto3.Resource"
+[[tipos_externos]]
+funcion = "boto3.session.Session.client"
+retorna = "boto3.Client"
+[[tipos_externos]]
+funcion = "boto3.Session.client"
+retorna = "boto3.Client"
+[[tipos_externos]]
+funcion = "pika.BlockingConnection.channel"
+retorna = "pika.channel.Channel"
+[[tipos_externos]]
+funcion = "builtins.open"
+retorna = "io.TextIOWrapper"
+[[tipos_externos]]
+funcion = "pathlib.Path.open"
+retorna = "io.TextIOWrapper"
+[[tipos_externos]]
+funcion = "pathlib.Path.[a-z]*"
+retorna = "pathlib.Path"
+[[tipos_externos]]
+funcion = "pathlib.Path.read_text"
+retorna = "str"
+[[tipos_externos]]
+funcion = "pymongo.MongoClient.get_database"
+retorna = "pymongo.database.Database"
+[[tipos_externos]]
+funcion = "pymongo.database.Database.get_collection"
+retorna = "pymongo.collection.Collection"
+[[tipos_externos]]
+funcion = "pandas.read_*"
+retorna = "pandas.DataFrame"
+[[tipos_externos]]
+funcion = "httpx.[a-z]*"
+retorna = "httpx.Response"
+[[tipos_externos]]
+funcion = "httpx.Client.[a-z]*"
+retorna = "httpx.Response"
+[[tipos_externos]]
+funcion = "httpx.AsyncClient.[a-z]*"
+retorna = "httpx.Response"
+[[tipos_externos]]
+funcion = "requests.[a-z]*"
+retorna = "requests.Response"
+[[tipos_externos]]
+funcion = "requests.Session.[a-z]*"
+retorna = "requests.Response"
+[[tipos_externos]]
+funcion = "zeep.Client.service"
+retorna = "zeep.Client.service"
+[[tipos_externos]]
+funcion = "smtplib.SMTP"
+retorna = "smtplib.SMTP"
+[[tipos_externos]]
+funcion = "smtplib.SMTP_SSL"
+retorna = "smtplib.SMTP"
+[[tipos_externos]]
+funcion = "ftplib.FTP"
+retorna = "ftplib.FTP"
+[[tipos_externos]]
+funcion = "ftplib.FTP_TLS"
+retorna = "ftplib.FTP"
+[[tipos_externos]]
+funcion = "http.client.HTTPSConnection"
+retorna = "http.client.HTTPConnection"
+
+# -----------------------------------------------------------------------------
+# Servicios externos (se dibujan como hojas del flujo, con su destino evaluado).
+#
+#   tipo        categoría que se muestra: HTTP, SOAP, BD, ARCHIVO, COLA, CORREO,
+#               PROCESO, NUBE, CACHE, GRPC, SOCKET, FTP, SSH, LDAP...
+#   nombre      nombre de la regla (aparece en el panel)
+#   clases      dueño de la función: módulo o clase con nombre completo (comodines);
+#               "builtins" para open(), "requests" para requests.get(...)
+#   metodos     nombres de función o método ("*" = cualquiera)
+#   destino     de dónde sale el destino: "arg:N", "kw:nombre", combinados con "|"
+#               (el primero que exista), "receptor" (el objeto sobre el que se llama),
+#               "metodo" (el nombre del método llamado)
+#   verbo       "nombre" (GET/POST... del nombre del método), "arg:N", "kw:x",
+#               "modo" (open: LEER/ESCRIBIR) o un texto fijo
+#   sql         true: el destino es SQL; se muestra operación y tabla
+#   requiere_sql  true: solo coincide si el primer argumento parece SQL
+# -----------------------------------------------------------------------------
+[[terminales]]
+tipo = "HTTP"
+nombre = "requests / httpx / aiohttp"
+clases = ["requests", "requests.api", "requests.Session", "requests.sessions.Session", "httpx", "httpx.Client",
+          "httpx.AsyncClient", "aiohttp.ClientSession", "aiohttp.client.ClientSession", "urllib3.PoolManager",
+          "urllib3.HTTPConnectionPool", "niquests", "niquests.Session", "treq", "grequests"]
+metodos = ["get", "post", "put", "delete", "patch", "head", "options"]
+destino = "arg:0|kw:url"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "HTTP"
+nombre = "request(método, url)"
+clases = ["requests", "requests.api", "requests.Session", "requests.sessions.Session", "httpx", "httpx.Client",
+          "httpx.AsyncClient", "aiohttp.ClientSession", "urllib3.PoolManager", "urllib3.HTTPConnectionPool",
+          "httplib2.Http", "tornado.httpclient.AsyncHTTPClient"]
+metodos = ["request", "stream", "send", "fetch", "urlopen"]
+destino = "arg:1|kw:url|arg:0"
+verbo = "arg:0|kw:method"
+
+[[terminales]]
+tipo = "HTTP"
+nombre = "urllib"
+clases = ["urllib.request", "urllib2", "six.moves.urllib.request"]
+metodos = ["urlopen", "Request", "urlretrieve"]
+destino = "arg:0|kw:url"
+verbo = "kw:method"
+
+[[terminales]]
+tipo = "HTTP"
+nombre = "http.client"
+clases = ["http.client.HTTPConnection", "http.client.HTTPSConnection", "httplib.HTTPConnection"]
+metodos = ["request", "putrequest"]
+destino = "arg:1|kw:url"
+verbo = "arg:0|kw:method"
+
+[[terminales]]
+tipo = "SOAP"
+nombre = "zeep / suds"
+clases = ["zeep", "zeep.client", "suds.client", "suds"]
+metodos = ["Client", "AsyncClient", "CachingClient"]
+destino = "arg:0|kw:wsdl|kw:url"
+
+[[terminales]]
+tipo = "SOAP"
+nombre = "operación SOAP (zeep)"
+clases = ["zeep.Client.service", "zeep.AsyncClient.service", "zeep.CachingClient.service", "suds.client.Client.service"]
+metodos = ["*"]
+destino = "metodo"
+
+[[terminales]]
+tipo = "BD"
+nombre = "conexión a base de datos"
+clases = ["sqlite3", "psycopg2", "psycopg", "pymysql", "MySQLdb", "mysql.connector", "cx_Oracle", "oracledb",
+          "pyodbc", "pymssql", "ibm_db", "ibm_db_dbi", "jaydebeapi", "asyncpg", "aiomysql", "aiosqlite",
+          "sqlalchemy", "databases", "teradatasql", "snowflake.connector", "duckdb"]
+metodos = ["connect", "create_engine", "create_async_engine", "create_pool", "Database"]
+destino = "arg:0|kw:dsn|kw:database|kw:host|kw:url"
+verbo = "CONEXION"
+
+[[terminales]]
+tipo = "BD"
+nombre = "SQL (DB-API / SQLAlchemy)"
+clases = ["sqlite3.Cursor", "sqlite3.Connection", "psycopg2.extensions.cursor", "psycopg2.extensions.connection",
+          "psycopg.Cursor", "psycopg.Connection", "pymysql.cursors.*", "pymysql.connections.Connection",
+          "mysql.connector.*", "cx_Oracle.Cursor", "cx_Oracle.Connection", "oracledb.Cursor", "oracledb.Connection",
+          "pyodbc.Cursor", "pyodbc.Connection", "ibm_db_dbi.Cursor", "sqlalchemy.engine.Connection",
+          "sqlalchemy.engine.Engine", "sqlalchemy.orm.Session", "sqlalchemy.orm.session.Session",
+          "sqlalchemy.ext.asyncio.AsyncSession", "asyncpg.*", "aiosqlite.*", "duckdb.*"]
+metodos = ["execute", "executemany", "executescript", "callproc", "fetch", "fetchrow", "fetchval", "scalar",
+           "scalars", "exec_driver_sql"]
+destino = "arg:0|kw:sql|kw:query|kw:statement"
+sql = true
+
+[[terminales]]
+tipo = "BD"
+nombre = "SQL (receptor sin tipo)"
+clases = ["*"]
+metodos = ["execute", "executemany", "executescript", "raw", "query", "read_sql", "read_sql_query", "fetch"]
+destino = "arg:0"
+sql = true
+requiere_sql = true
+
+[[terminales]]
+tipo = "BD"
+nombre = "ORM SQLAlchemy"
+clases = ["sqlalchemy.orm.Session", "sqlalchemy.orm.session.Session", "sqlalchemy.orm.scoped_session",
+          "sqlalchemy.ext.asyncio.AsyncSession", "flask_sqlalchemy.SQLAlchemy.session"]
+metodos = ["query", "add", "add_all", "delete", "merge", "get", "commit", "flush", "refresh", "bulk_save_objects"]
+destino = "arg:0"
+
+[[terminales]]
+tipo = "BD"
+nombre = "ORM Django"
+clases = ["django.db.models.Model.objects", "django.db.models.Manager", "django.db.models.manager.Manager",
+          "django.db.models.QuerySet"]
+metodos = ["filter", "get", "create", "all", "update", "delete", "exclude", "bulk_create", "bulk_update",
+           "get_or_create", "update_or_create", "count", "exists", "first", "last", "values", "values_list",
+           "aggregate", "annotate", "order_by", "select_related", "prefetch_related", "raw", "in_bulk"]
+destino = "receptor"
+
+[[terminales]]
+tipo = "BD"
+nombre = "MongoDB"
+clases = ["pymongo", "motor.motor_asyncio", "mongoengine"]
+metodos = ["MongoClient", "AsyncIOMotorClient", "connect"]
+destino = "arg:0|kw:host"
+verbo = "CONEXION"
+
+[[terminales]]
+tipo = "BD"
+nombre = "MongoDB colección"
+clases = ["pymongo.collection.Collection", "pymongo.database.Database"]
+metodos = ["find", "find_one", "insert_one", "insert_many", "update_one", "update_many", "delete_one",
+           "delete_many", "aggregate", "count_documents", "replace_one", "bulk_write"]
+destino = "receptor"
+
+[[terminales]]
+tipo = "CACHE"
+nombre = "Redis"
+clases = ["redis", "redis.Redis", "redis.StrictRedis", "redis.client.Redis", "redis.asyncio.Redis",
+          "redis.client.Pipeline"]
+metodos = ["Redis", "StrictRedis", "from_url", "get", "set", "setex", "hget", "hset", "hgetall", "delete",
+           "publish", "lpush", "rpush", "lpop", "rpop", "expire", "incr", "decr", "sadd", "smembers", "zadd",
+           "xadd", "mget", "mset", "exists", "execute"]
+destino = "arg:0|kw:name|kw:url"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "ARCHIVO"
+nombre = "open()"
+clases = ["builtins", "io", "codecs", "gzip", "bz2", "lzma", "aiofiles"]
+metodos = ["open"]
+destino = "arg:0|kw:file|kw:filename"
+verbo = "modo"
+
+[[terminales]]
+tipo = "ARCHIVO"
+nombre = "pathlib"
+clases = ["pathlib.Path", "pathlib.PurePath", "pathlib.PosixPath", "pathlib.WindowsPath"]
+metodos = ["read_text", "write_text", "read_bytes", "write_bytes", "unlink", "rmdir", "rename", "replace"]
+destino = "receptor"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "ARCHIVO"
+nombre = "os / shutil"
+clases = ["os", "shutil"]
+metodos = ["remove", "unlink", "rename", "replace", "makedirs", "rmdir", "removedirs", "copy", "copy2",
+           "copyfile", "copytree", "move", "rmtree", "listdir", "scandir", "walk"]
+destino = "arg:0|kw:src|kw:path"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "ARCHIVO"
+nombre = "pandas / openpyxl / csv"
+clases = ["pandas", "pd", "openpyxl", "xlrd", "polars"]
+metodos = ["read_csv", "read_excel", "read_json", "read_parquet", "read_table", "read_fwf", "read_xml",
+           "load_workbook", "open_workbook", "scan_csv", "scan_parquet"]
+destino = "arg:0|kw:filepath_or_buffer|kw:io|kw:filename|kw:path"
+verbo = "LEER"
+
+[[terminales]]
+tipo = "ARCHIVO"
+nombre = "pandas DataFrame (escritura)"
+clases = ["pandas.DataFrame", "pandas.core.frame.DataFrame", "polars.DataFrame"]
+metodos = ["to_csv", "to_excel", "to_json", "to_parquet", "to_xml", "write_csv", "write_parquet"]
+destino = "arg:0|kw:path_or_buf|kw:excel_writer|kw:path"
+verbo = "ESCRIBIR"
+
+[[terminales]]
+tipo = "BD"
+nombre = "pandas SQL"
+clases = ["pandas", "pandas.DataFrame"]
+metodos = ["read_sql", "read_sql_query", "read_sql_table", "to_sql"]
+destino = "arg:0|kw:sql|kw:name"
+sql = true
+
+[[terminales]]
+tipo = "PROCESO"
+nombre = "subprocess / os.system"
+clases = ["subprocess", "os", "asyncio", "sh", "plumbum"]
+metodos = ["run", "call", "check_call", "check_output", "Popen", "system", "popen", "spawnv", "execv",
+           "execvp", "create_subprocess_exec", "create_subprocess_shell", "getoutput", "getstatusoutput"]
+destino = "arg:0|kw:args|kw:cmd"
+
+[[terminales]]
+tipo = "CORREO"
+nombre = "smtplib (conexión)"
+clases = ["smtplib", "aiosmtplib"]
+metodos = ["SMTP", "SMTP_SSL", "LMTP"]
+destino = "arg:0|kw:host|kw:hostname"
+verbo = "CONEXION"
+
+[[terminales]]
+tipo = "CORREO"
+nombre = "smtplib (envío)"
+clases = ["smtplib.SMTP", "smtplib.SMTP_SSL", "aiosmtplib.SMTP", "aiosmtplib"]
+metodos = ["sendmail", "send_message", "send"]
+destino = "kw:to_addrs|arg:1"
+verbo = "ENVIAR"
+
+[[terminales]]
+tipo = "CORREO"
+nombre = "Django / Flask mail"
+clases = ["django.core.mail", "flask_mail.Mail"]
+metodos = ["send_mail", "send_mass_mail", "mail_admins", "send"]
+destino = "arg:3|kw:recipient_list"
+
+[[terminales]]
+tipo = "COLA"
+nombre = "RabbitMQ (pika)"
+clases = ["pika.channel.Channel", "pika.adapters.blocking_connection.BlockingChannel", "pika"]
+metodos = ["basic_publish", "queue_declare", "basic_consume", "exchange_declare", "BlockingConnection"]
+destino = "kw:routing_key|kw:queue|kw:exchange|arg:1|arg:0"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "COLA"
+nombre = "Kafka"
+clases = ["kafka", "kafka.KafkaProducer", "kafka.producer.KafkaProducer", "kafka.KafkaConsumer",
+          "confluent_kafka.Producer", "confluent_kafka.Consumer", "aiokafka.AIOKafkaProducer"]
+metodos = ["send", "produce", "subscribe", "send_and_wait", "KafkaProducer", "KafkaConsumer"]
+destino = "arg:0|kw:topic|kw:topics"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "COLA"
+nombre = "Celery / RQ (envío de tarea)"
+clases = ["celery.Celery", "celery.app.base.Celery", "rq.Queue"]
+metodos = ["send_task", "enqueue", "enqueue_call"]
+destino = "arg:0|kw:name|kw:f"
+
+[[terminales]]
+tipo = "COLA"
+nombre = "IBM MQ (pymqi)"
+clases = ["pymqi", "pymqi.Queue", "pymqi.QueueManager"]
+metodos = ["Queue", "QueueManager", "connect", "put", "get", "put1"]
+destino = "arg:1|arg:0"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "NUBE"
+nombre = "AWS boto3"
+clases = ["boto3", "boto3.Client", "boto3.Resource", "boto3.session.Session"]
+metodos = ["client", "resource", "send_message", "send_message_batch", "receive_message", "publish",
+           "put_object", "get_object", "upload_file", "download_file", "upload_fileobj", "invoke",
+           "put_item", "get_item", "query", "scan", "start_execution", "put_events", "put_record"]
+destino = "kw:QueueUrl|kw:TopicArn|kw:Bucket|kw:FunctionName|kw:TableName|kw:StreamName|arg:0"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "NUBE"
+nombre = "Azure / GCP"
+clases = ["azure.storage.blob.*", "azure.servicebus.*", "google.cloud.storage.*", "google.cloud.pubsub_v1.*",
+          "google.cloud.bigquery.*"]
+metodos = ["upload_blob", "download_blob", "send_messages", "publish", "query", "upload_from_filename",
+           "download_to_filename", "from_connection_string", "Client"]
+destino = "arg:0|kw:container_name|kw:topic|kw:query"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "GRPC"
+nombre = "gRPC"
+clases = ["grpc", "grpc.aio"]
+metodos = ["insecure_channel", "secure_channel"]
+destino = "arg:0|kw:target"
+
+[[terminales]]
+tipo = "SOCKET"
+nombre = "socket"
+clases = ["socket", "socket.socket", "asyncio", "websockets", "websocket"]
+metodos = ["connect", "create_connection", "open_connection", "connect_ex", "WebSocketApp"]
+destino = "arg:0|kw:address|kw:uri|kw:url"
+
+[[terminales]]
+tipo = "FTP"
+nombre = "ftplib"
+clases = ["ftplib", "ftplib.FTP"]
+metodos = ["FTP", "FTP_TLS", "storbinary", "retrbinary", "storlines", "retrlines"]
+destino = "arg:0|kw:host|kw:cmd"
+
+[[terminales]]
+tipo = "SSH"
+nombre = "paramiko / fabric"
+clases = ["paramiko.SSHClient", "paramiko.client.SSHClient", "paramiko.SFTPClient", "fabric.Connection",
+          "pysftp", "pysftp.Connection"]
+metodos = ["connect", "exec_command", "open_sftp", "put", "get", "run", "sudo", "Connection"]
+destino = "arg:0|kw:hostname|kw:host|kw:command"
+verbo = "nombre"
+
+[[terminales]]
+tipo = "LDAP"
+nombre = "LDAP"
+clases = ["ldap3", "ldap3.Connection", "ldap"]
+metodos = ["Server", "Connection", "initialize", "search", "search_s", "bind", "simple_bind_s"]
+destino = "arg:0|kw:host"
+verbo = "nombre"

@@ -1,0 +1,9 @@
+.git
+**/__pycache__
+**/*.pyc
+web/node_modules
+web/dist
+proyectos
+salida
+*.mapa.json
+!mapeador_py/web/ejemplo.mapa.json

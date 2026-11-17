@@ -1,0 +1,16 @@
+services:
+  mapeador-python:
+    build: .
+    image: mapeador-python:latest
+    container_name: mapeador-python
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      # Proyectos que se abren desde el botón «Servidor» sin subirlos (solo lectura).
+      # Para usar otra carpeta: PROYECTOS=~/repos docker compose up -d
+      - ${PROYECTOS:-./proyectos}:/proyectos:ro
+      # Configuración propia (opcional): copia config/config.ejemplo.toml a config/mapeador.toml
+      - ./config:/config:ro
+    environment:
+      MAPEADOR_PY_CONFIG: /config/mapeador.toml
+    restart: unless-stopped

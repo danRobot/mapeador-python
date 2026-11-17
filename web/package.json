@@ -1,0 +1,18 @@
+{
+  "name": "mapeador-python-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Interfaz del mapeador Python: flujo de funciones y clases como un PlantUML interactivo (motor Canvas de jsoncrack-lite)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4"
+  }
+}

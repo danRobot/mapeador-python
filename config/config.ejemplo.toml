@@ -1,0 +1,67 @@
+# =============================================================================
+# Ejemplo de configuración propia del mapeador Python.
+#
+# Copia este archivo a config/mapeador.toml (Docker lo lee solo) o pásalo con
+#   mapeador-py analizar ./proyecto --config mi-config.toml
+#   mapeador-py servir --config mi-config.toml
+#
+# Deja solo lo que cambies: se fusiona encima de mapeador_py/config_default.toml.
+# Una clave terminada en "_extra" AGREGA elementos a la lista por defecto en vez de
+# reemplazarla.
+# =============================================================================
+
+[general]
+# Carpetas propias que no quieres ver (además de las de defecto: usa _extra).
+directorios_excluidos_extra = ["generado", "legacy_no_usar"]
+# Analizar también tests/ y test_*.py
+# incluir_pruebas = true
+
+[analisis]
+# Proyectos muy grandes sin anotaciones de tipo: más rondas = más llamadas resueltas.
+# rondas_inferencia = 4
+
+[entradas]
+# Otros nombres de archivo o de función que en tu equipo son "el main".
+archivos_principales_extra = ["lanzador.py", "proceso_batch.py"]
+funciones_principales_extra = ["ejecutar_lote", "procesar_todo"]
+
+# -----------------------------------------------------------------------------
+# Tipos de retorno de funciones de tus librerías internas, para seguir cadenas.
+# Ejemplo: conexion = banco_fw.bd.conectar("CORE"); conexion.consultar(sql)
+# -----------------------------------------------------------------------------
+[[tipos_externos_extra]]
+funcion = "banco_fw.bd.conectar"
+retorna = "banco_fw.bd.Conexion"
+
+[[tipos_externos_extra]]
+funcion = "banco_fw.esb.cliente"
+retorna = "banco_fw.esb.ClienteESB"
+
+# -----------------------------------------------------------------------------
+# Servicios externos propios: la clase del framework que hace las llamadas HTTP,
+# SQL o al bus de servicios. El destino se evalúa en la línea que la usa.
+# -----------------------------------------------------------------------------
+[[terminales_extra]]
+tipo = "BD"
+nombre = "framework del banco: SQL"
+clases = ["banco_fw.bd.Conexion"]
+metodos = ["consultar", "ejecutar", "llamar_procedimiento"]
+destino = "arg:0|kw:sql"
+sql = true
+
+[[terminales_extra]]
+tipo = "ESB"
+nombre = "bus de servicios"
+clases = ["banco_fw.esb.ClienteESB"]
+metodos = ["invocar", "publicar"]
+destino = "arg:0|kw:servicio"
+verbo = "nombre"
+
+[[terminales_extra]]
+tipo = "HTTP"
+nombre = "cliente REST propio"
+# Si el wrapper HTTP es una clase de TU proyecto, pon su nombre completo aquí: la
+# llamada se marca como servicio externo en vez de entrar a su código.
+funciones = ["comun.http.ClienteRest.get", "comun.http.ClienteRest.post"]
+destino = "arg:0|kw:url"
+verbo = "nombre"

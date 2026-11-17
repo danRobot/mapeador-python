@@ -1,0 +1,15 @@
+Mapeador Python
+
+El motor de dibujo (web/src/engine: layout por capas, vista Canvas, etapas, minimapa)
+proviene de jsoncrack-lite, que reproduce el diseño visual de los nodos de JSON Crack
+(https://github.com/AykutSarac/jsoncrack.com), Copyright Aykut Saraç, licenciado bajo
+Apache License 2.0. En particular, los colores de los temas oscuro y claro
+(web/src/engine/theme.ts) provienen de packages/jsoncrack-react.
+
+La mecánica de configuración (TOML con claves _extra) y la idea de las reglas de servicios
+externos ([[terminales]]) provienen del mapeador de servicios (AngularJS → JAX-RS).
+
+El tema "PlantUML" y la exportación a PlantUML imitan la notación de PlantUML
+(https://plantuml.com); no se incluye ni se ejecuta PlantUML.
+
+"JSON Crack" y "PlantUML" son marcas de sus autores; este proyecto no está afiliado a ellos.

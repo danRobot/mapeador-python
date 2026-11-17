@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mapeador-python"
+version = "0.1.0"
+description = "Mapa interactivo de un proyecto Python: busca el main y dibuja funciones, clases, parámetros, tipos y servicios externos"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+# Solo biblioteca estándar: sin dependencias.
+dependencies = []
+
+[project.scripts]
+mapeador-py = "mapeador_py.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["mapeador_py*"]
+
+[tool.setuptools.package-data]
+mapeador_py = ["config_default.toml", "web/*.html", "web/*.svg", "web/*.json", "web/assets/*"]

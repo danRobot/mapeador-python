@@ -1,0 +1,9 @@
+[project]
+name = "banco-pagos"
+version = "1.0.0"
+description = "Ejemplo para el mapeador: procesamiento de pagos de un banco"
+requires-python = ">=3.10"
+dependencies = ["requests", "zeep", "fastapi", "celery"]
+
+[project.scripts]
+pagos-lote = "pagos.cli:main"

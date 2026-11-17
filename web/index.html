@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mapeador Python</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="toolbar">
+        <div class="brand" title="Mapa interactivo de un proyecto Python (motor de jsoncrack-lite)">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="2.5" y="3" width="8" height="6" rx="1.5" fill="currentColor"/><rect x="13.5" y="3" width="8" height="6" rx="1.5" fill="currentColor" opacity=".55"/><rect x="13.5" y="15" width="8" height="6" rx="1.5" fill="currentColor" opacity=".55"/><path d="M10.5 6h3M6.5 9v9h7" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
+          <span>Mapeador <b>Python</b></span>
+        </div>
+
+        <div class="group">
+          <button id="btn-carpeta" class="btn primary" title="Abrir la carpeta principal del proyecto (Ctrl+O)">
+            <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span>Abrir carpeta</span>
+          </button>
+          <button id="btn-servidor" class="btn" title="Proyectos de la carpeta del servidor">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
+            <span>Servidor</span>
+          </button>
+          <button id="btn-json" class="btn" title="Abrir un JSON generado con «mapeador-py analizar»">
+            <svg viewBox="0 0 24 24"><path d="M8 3a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2M16 3a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2"/></svg>
+            <span>JSON</span>
+          </button>
+          <input id="input-carpeta" type="file" webkitdirectory directory multiple hidden />
+          <input id="input-json" type="file" accept=".json,application/json" hidden />
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Vista">
+          <button id="modo-flujo" class="seg on" title="Flujo de llamadas desde la entrada">Flujo</button>
+          <button id="modo-estructura" class="seg" title="Paquetes, módulos, clases y funciones">Estructura</button>
+        </div>
+        <label class="select entrada-sel" title="Punto de entrada del flujo">
+          <span>Entrada</span>
+          <select id="entrada" disabled><option>—</option></select>
+        </label>
+
+        <div class="search" role="search">
+          <svg viewBox="0 0 24 24" class="search-icon"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search-input" type="search" placeholder="Buscar función, clase o módulo…  (Ctrl+F)" autocomplete="off" spellcheck="false" />
+          <span id="search-count" class="search-count"></span>
+          <div id="search-results" class="search-results" hidden></div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="group">
+          <button id="btn-expand" class="icon-btn" title="Expandir la etapa (sigue el flujo hasta el límite de niveles)">
+            <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+          <button id="btn-collapse" class="icon-btn" title="Colapsar la etapa">
+            <svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+          </button>
+          <div class="settings-wrap">
+            <button id="btn-settings" class="icon-btn toggle" title="Ajustes y filtros">
+              <svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+            </button>
+            <div id="settings" class="popover" hidden>
+              <div class="pop-title">Qué mostrar en los nodos</div>
+              <label class="pop-check"><input type="checkbox" id="f-parametros" /> Parámetros y tipos</label>
+              <label class="pop-check"><input type="checkbox" id="f-noresueltas" /> Llamadas no resueltas <small>(?)</small></label>
+              <label class="pop-check"><input type="checkbox" id="f-libreria" /> Llamadas a librerías <small>(print, json, logger…)</small></label>
+              <label class="pop-check"><input type="checkbox" id="f-excepciones" /> Excepciones que se lanzan</label>
+              <label class="pop-check"><input type="checkbox" id="f-referencias" /> Funciones pasadas como argumento</label>
+              <label class="pop-check"><input type="checkbox" id="f-privados" /> Miembros privados (_x)</label>
+              <div class="pop-sep"></div>
+              <div class="pop-title">Navegación</div>
+              <label class="pop-row">
+                <span>Niveles por etapa<small>Al abrir una fila del último nivel se abre una etapa nueva</small></span>
+                <input type="number" id="cfg-levels" min="2" max="50" step="1" />
+              </label>
+              <label class="pop-check"><input type="checkbox" id="cfg-levels-off" /> Sin límite (todo en una vista)</label>
+              <label class="pop-check"><input type="checkbox" id="cfg-autofit" /> Ajustar la vista al expandir / colapsar</label>
+              <div class="pop-sep"></div>
+              <div class="pop-title">Análisis (al abrir una carpeta)</div>
+              <label class="pop-check"><input type="checkbox" id="cfg-pruebas" /> Incluir pruebas (tests/, test_*.py)</label>
+              <div class="pop-foot">
+                <span class="pop-hint">URL: <code>?niveles=5</code></span>
+                <button id="cfg-reset" class="mini" type="button">Por defecto</button>
+              </div>
+            </div>
+          </div>
+          <button id="btn-dir" class="icon-btn" title="Dirección del layout">
+            <svg viewBox="0 0 24 24" id="dir-icon"><path d="M4 12h14m-5-5 5 5-5 5"/></svg>
+          </button>
+          <button id="btn-grid" class="icon-btn toggle on" title="Cuadrícula">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 12h16M12 4v16"/></svg>
+          </button>
+          <button id="btn-theme" class="icon-btn" title="Tema: oscuro / claro / PlantUML"></button>
+          <button id="btn-puml" class="btn" title="Exportar a PlantUML lo que está abierto">
+            <svg viewBox="0 0 24 24"><path d="M4 5h7v5H4zM13 14h7v5h-7zM7.5 10v6.5H13"/></svg>
+            <span>PlantUML</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <div id="canvas-wrap" class="canvas-wrap"></div>
+        <nav id="crumbs" class="crumbs" aria-label="Etapas de navegación" hidden></nav>
+
+        <section id="empty" class="empty">
+          <div class="empty-card">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6m-3-3 3 3 3-3"/></svg>
+            </div>
+            <h1>Suelta aquí la carpeta principal del proyecto</h1>
+            <p>Se buscan el <b>main</b> y las demás entradas (<code>if __name__ == "__main__"</code>, scripts de <code>pyproject.toml</code>, rutas de FastAPI / Flask / Django, tareas, comandos) y se dibuja el flujo de funciones y clases con sus parámetros y tipos. El código solo se lee: nunca se ejecuta.</p>
+            <div class="empty-actions">
+              <button class="btn primary" data-action="carpeta">Abrir carpeta</button>
+              <button class="btn" data-action="json">Abrir JSON</button>
+              <button class="btn" data-action="ejemplo">Ver ejemplo</button>
+            </div>
+            <div id="empty-servidor" class="empty-data" hidden>
+              <div class="empty-data-title">Proyectos en la carpeta del servidor</div>
+              <ul id="empty-servidor-list"></ul>
+            </div>
+          </div>
+        </section>
+
+        <div class="hud">
+          <canvas id="minimap" class="minimap"></canvas>
+          <div class="leyenda" id="leyenda" title="Tipos de arista">
+            <span><i class="l-sol"></i>llama</span><span><i class="l-das"></i>crea</span><span><i class="l-dot"></i>tipo</span><span><i class="l-her"></i>hereda</span>
+          </div>
+          <div class="controls">
+            <button id="zoom-out" class="icon-btn" title="Alejar (-)"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+            <button id="zoom-label" class="zoom-label" title="Restablecer a 100%">100%</button>
+            <button id="zoom-in" class="icon-btn" title="Acercar (+)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+            <span class="sep"></span>
+            <button id="fit" class="icon-btn" title="Ajustar a la pantalla (F)"><svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4m6 0h4a1 1 0 0 1 1 1v4m0 6v4a1 1 0 0 1-1 1h-4m-6 0H5a1 1 0 0 1-1-1v-4"/></svg></button>
+            <button id="root" class="icon-btn" title="Ir a la raíz de la etapa (R)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg></button>
+            <span class="sep"></span>
+            <button id="wheel-mode" class="icon-btn" title="Rueda del ratón: zoom"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="5"/><path d="M12 7v3"/></svg></button>
+            <button id="toggle-minimap" class="icon-btn toggle on" title="Minimapa"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="6" height="5"/></svg></button>
+            <button id="export-png" class="icon-btn" title="Descargar PNG de la vista"><svg viewBox="0 0 24 24"><path d="M12 4v11m-4-4 4 4 4-4M5 20h14"/></svg></button>
+          </div>
+        </div>
+
+        <aside id="panel" class="panel" hidden>
+          <header class="panel-head">
+            <div class="panel-title">Detalle</div>
+            <span class="field-actions">
+              <button class="mini accent" data-action="stage" id="panel-stage" title="Ver este nodo como raíz de una etapa nueva">Abrir como etapa</button>
+              <button class="mini" data-action="center">Centrar</button>
+              <button class="mini" data-action="copy">Copiar nombre</button>
+              <button class="mini" data-action="puml" title="Diagrama de secuencia PlantUML desde este nodo">Secuencia</button>
+            </span>
+            <button id="panel-close" class="icon-btn" title="Cerrar (Esc)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+          </header>
+          <div class="panel-body" id="panel-body"></div>
+        </aside>
+
+        <div id="loading" class="overlay" hidden>
+          <div class="loading-card">
+            <div class="spinner"></div>
+            <div id="loading-text">Cargando…</div>
+            <div class="progress"><div id="loading-bar"></div></div>
+            <div id="loading-sub" class="loading-sub"></div>
+          </div>
+        </div>
+
+        <div id="error" class="overlay" hidden>
+          <div class="error-card">
+            <div class="error-title" id="error-title">No se pudo analizar</div>
+            <div id="error-msg"></div>
+            <div class="empty-actions"><button class="btn" id="error-close">Cerrar</button></div>
+          </div>
+        </div>
+
+        <div id="drop" class="drop" hidden><div>Suelta la carpeta del proyecto (o un JSON del mapeador)</div></div>
+      </main>
+
+      <footer class="statusbar">
+        <span id="st-file">Sin proyecto</span>
+        <span id="st-stats"></span>
+        <span class="spacer"></span>
+        <span id="st-adv" class="st-adv" hidden></span>
+        <span id="st-perf"></span>
+      </footer>
+    </div>
+
+    <dialog id="servidor-dialog" class="dialog">
+      <form method="dialog">
+        <div class="dialog-title">Proyectos en la carpeta del servidor <code id="servidor-ruta"></code></div>
+        <p class="dialog-hint">Con Docker es la carpeta <code>./proyectos</code> (montada en el contenedor). Se analiza en el servidor, sin subir nada.</p>
+        <ul id="servidor-list" class="data-list"></ul>
+        <div class="dialog-actions"><button value="cancel" class="btn">Cerrar</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="puml-dialog" class="dialog dialog-wide">
+      <form method="dialog">
+        <div class="dialog-title">PlantUML de lo que está abierto</div>
+        <div class="tabs">
+          <button type="button" class="tab on" data-tab="secuencia">Secuencia</button>
+          <button type="button" class="tab" data-tab="clases">Clases</button>
+        </div>
+        <textarea id="puml-text" spellcheck="false" readonly></textarea>
+        <p class="dialog-hint">Pégalo en tu PlantUML (jar local, extensión de VS Code o el servidor de tu empresa). No se envía a ningún sitio.</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn" id="puml-copy">Copiar</button>
+          <button type="button" class="btn" id="puml-download">Descargar .puml</button>
+          <button value="cancel" class="btn primary">Cerrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
